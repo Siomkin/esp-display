@@ -1,0 +1,51 @@
+/**
+ * @file app_config.h.example
+ * @brief All user settings for the weather station, in one file.
+ *
+ * Setup:
+ *   cp config/app_config.h.example config/app_config.h
+ *   # then edit config/app_config.h
+ *
+ * config/app_config.h is gitignored: keep your passwords, broker and topics there,
+ * and never edit tracked files to configure a device.
+ */
+
+#pragma once
+
+/*******************************************************************************
+ * WiFi
+ ******************************************************************************/
+#define WIFI_SSID                   "YourWiFiSSID"
+#define WIFI_PASSWORD               "YourPassword"
+
+/*******************************************************************************
+ * MQTT broker
+ ******************************************************************************/
+#define MQTT_BROKER_URI             "mqtt://192.168.1.100:1883"
+#define MQTT_USERNAME               ""  // Optional: leave empty if not required
+#define MQTT_PASSWORD               ""  // Optional: leave empty if not required
+
+// Prefix; the last 3 MAC bytes are appended (e.g. "wirenboard-a1b2c3") so each board is unique
+#define MQTT_CLIENT_ID              "wirenboard"
+
+/*******************************************************************************
+ * MQTT topics
+ ******************************************************************************/
+#define MQTT_TOPIC_TEMP_OUTSIDE     "/devices/outside-sensor/controls/temperature"
+#define MQTT_TOPIC_TEMP_INSIDE      "/devices/inside-sensor/controls/temperature"
+#define MQTT_TOPIC_HUMIDITY         "/devices/humidity-sensor/controls/humidity"
+#define MQTT_TOPIC_ILLUMINANCE      "/devices/light-sensor/controls/illuminance"
+
+// Time and date published by the controller (UTC, "HH:MM" and "YYYY-MM-DD")
+#define MQTT_TOPIC_SYSTEM_DATE      "/devices/system_time/controls/current_date"
+#define MQTT_TOPIC_SYSTEM_TIME      "/devices/system_time/controls/current_time"
+
+/*******************************************************************************
+ * Time and display
+ ******************************************************************************/
+// UTC offset in hours added to the MQTT time (Minsk = UTC+3)
+#define TIMEZONE_OFFSET_HOURS       3
+
+// Night mode (backlight 1% in the 100% "auto" level): active from START:00 until END:00 local time
+#define NIGHT_MODE_START_HOUR       22
+#define NIGHT_MODE_END_HOUR         8

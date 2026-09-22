@@ -1,0 +1,10 @@
+dependencies:
+  idf: ">=5.0"
+  lvgl/lvgl: "~9.6.0"
+  espressif/esp_lvgl_port: "^2.9.0"
+  espressif/led_strip: "^3.0.3"
+  # ESP-MQTT moved out of ESP-IDF in v6.0
+  espressif/mqtt:
+    version: "^1.1.0"
+    rules:
+      - if: "idf_version >=6.0"
