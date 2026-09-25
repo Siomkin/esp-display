@@ -24,7 +24,7 @@ The backlight PWM duty cycle SHALL be the named percentage of full scale, within
 - **THEN** the PWM duty is 0
 
 ### Requirement: Night-mode window
-In the 100% (auto) level, the device SHALL dim to 1% during the configured night window. It SHALL return to 100% outside the window. The window starts at `NIGHT_MODE_START_HOUR:00` and ends at `NIGHT_MODE_END_HOUR:00` local time, and SHALL be correct whether or not it crosses midnight. At every other level, night mode SHALL NOT change the brightness.
+In the 100% (auto) level, the device SHALL dim to 1% during the configured night window. It SHALL return to 100% outside the window. The window starts at `NIGHT_MODE_START_HOUR:00` and ends at `NIGHT_MODE_END_HOUR:00` local time, and SHALL be correct whether or not it crosses midnight. At every other level, night mode SHALL NOT change the brightness. When the user selects the auto level, the device SHALL apply the brightness for the current local time immediately. It SHALL NOT show 100% first and dim afterwards.
 
 #### Scenario: Window crosses midnight
 - **WHEN** start is 22, end is 8, the level is 100% (auto), and local time is 23:30
@@ -41,3 +41,11 @@ In the 100% (auto) level, the device SHALL dim to 1% during the configured night
 #### Scenario: Fixed level ignores night mode
 - **WHEN** the level is 25% and local time is inside the night window
 - **THEN** the backlight stays at 25%
+
+#### Scenario: Entering auto at night
+- **WHEN** local time is inside the night window and the user presses from 25% to the auto level
+- **THEN** the backlight goes from 25% straight to 1%, never 100%
+
+#### Scenario: Entering auto before the time is known
+- **WHEN** no time has been received yet and the user selects the auto level
+- **THEN** the backlight is at 100% until local time is known
