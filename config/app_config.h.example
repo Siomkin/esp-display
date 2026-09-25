@@ -46,6 +46,7 @@
 // UTC offset in hours added to the MQTT time (Minsk = UTC+3)
 #define TIMEZONE_OFFSET_HOURS       3
 
-// Night mode (backlight 1% in the 100% "auto" level): active from START:00 until END:00 local time
+// Night mode (backlight 1% in the 100% "auto" level): active from START:00 until END:00 local time.
+// Any window works, crossing midnight (22-8) or not (1-6); START == END disables night mode.
 #define NIGHT_MODE_START_HOUR       22
 #define NIGHT_MODE_END_HOUR         8

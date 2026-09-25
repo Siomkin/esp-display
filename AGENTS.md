@@ -94,6 +94,8 @@ Edge → ISR (task notify) → Task: wait 50ms, sample level → state changed? 
                                 ├─ <1s: Cycle backlight
                                 └─ ≥1s: Toggle RGB
 ```
+Actions run under `lvgl_port_lock()`, since the UI update shares the backlight state. `button_handler_init()`
+runs before the WiFi wait, so the button works from the first frame.
 
 ## Code Style & Patterns
 

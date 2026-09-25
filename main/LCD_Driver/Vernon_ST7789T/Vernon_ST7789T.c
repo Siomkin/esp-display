@@ -189,7 +189,7 @@ static esp_err_t panel_st7789t_init(esp_lcd_panel_t *panel)
     /* Frame Rate Control, 60Hz, inversion=0 */
     esp_lcd_panel_io_tx_param(io, 0xC6, (uint8_t []){0x0F}, 1);
     /* Power Control 1, AVDD=6.8V, AVCL=-4.8V, VDDS=2.3V */
-    esp_lcd_panel_io_tx_param(io, 0xD0, (uint8_t []){0xA4, 0xA1}, 1);
+    esp_lcd_panel_io_tx_param(io, 0xD0, (uint8_t []){0xA4, 0xA1}, 2);
     /* Positive Voltage Gamma Control */
     esp_lcd_panel_io_tx_param(io, 0xE0, (uint8_t []){0xD0, 0x0D, 0x14, 0x0D, 0x0D, 0x09, 0x38, 0x44, 0x4E, 0x3A, 0x17, 0x18, 0x2F, 0x30}, 14);
     /* Negative Voltage Gamma Control */

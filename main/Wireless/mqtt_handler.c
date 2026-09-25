@@ -110,6 +110,9 @@ esp_err_t mqtt_client_init(void)
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = MQTT_BROKER_URI,
         .credentials.client_id = client_id,
+        // Empty string in app_config.h = anonymous broker: omit the field rather than send ""
+        .credentials.username = MQTT_USERNAME[0] ? MQTT_USERNAME : NULL,
+        .credentials.authentication.password = MQTT_PASSWORD[0] ? MQTT_PASSWORD : NULL,
         /* Survive WiFi drops during router reboot / AP firmware update */
         .session.keepalive = 30,
         .network.timeout_ms = 10000,

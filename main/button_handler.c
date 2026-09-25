@@ -1,5 +1,6 @@
 #include "button_handler.h"
 #include "weather_station_ui.h"
+#include "esp_lvgl_port.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -42,6 +43,8 @@ static void button_task(void* arg)
         }
 
         int64_t press_duration = now_ms - press_start_ms;
+        // Same lock as the UI update: otherwise it can override the new backlight level mid-update
+        lvgl_port_lock(0);
         if (press_duration >= BUTTON_LONG_PRESS_MS) {
             // Long press - toggle RGB LED
             ESP_LOGI(TAG, "Long press detected (%lld ms) - Toggling RGB LED", press_duration);
@@ -51,6 +54,7 @@ static void button_task(void* arg)
             ESP_LOGI(TAG, "Short press detected (%lld ms) - Cycling backlight", press_duration);
             weather_station_cycle_backlight();
         }
+        lvgl_port_unlock();
     }
 }
 

@@ -263,7 +263,10 @@ void weather_station_ui_update(void)
             // 22:00 to 08:00 -> 1%, then restore previous brightness
             if (auto_brightness_enabled && backlight_level == 5) {
                 int h = tm_local->tm_hour;
-                int8_t is_night = (h >= NIGHT_MODE_START_HOUR || h < NIGHT_MODE_END_HOUR);
+                // Window may cross midnight (22-8) or not (1-6); START == END disables night mode
+                int8_t is_night = (NIGHT_MODE_START_HOUR <= NIGHT_MODE_END_HOUR)
+                    ? (h >= NIGHT_MODE_START_HOUR && h < NIGHT_MODE_END_HOUR)
+                    : (h >= NIGHT_MODE_START_HOUR || h < NIGHT_MODE_END_HOUR);
                 if (is_night != night_mode) {
                     night_mode = is_night;
                     // Night: 1%, day: restore saved brightness

@@ -47,6 +47,10 @@ void app_main(void)
     vTaskDelay(1);      // Double-buffered: last strip's DMA (~1.4ms) may still be in flight
     BK_Light(5);  // Start with 5% brightness
 
+    // Button only needs the UI and RGB: usable now, not after the WiFi wait (up to 30s)
+    ESP_LOGI(TAG, "Initializing button handlers...");
+    button_handler_init();
+
     // Initialize WiFi (keeps retrying forever if AP is down)
     ESP_LOGI(TAG, "Connecting to WiFi...");
     esp_err_t wifi_ret = wifi_connect_init();
@@ -59,9 +63,5 @@ void app_main(void)
     // Start MQTT regardless — client auto-reconnects once WiFi is up
     ESP_LOGI(TAG, "Starting MQTT client...");
     mqtt_client_init();
-
-    // Initialize button handlers
-    ESP_LOGI(TAG, "Initializing button handlers...");
-    button_handler_init();
     // app_main returns; LVGL, MQTT and button work continue in their own tasks
 }

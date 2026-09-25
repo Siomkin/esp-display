@@ -82,8 +82,7 @@ void BK_Init(void)
 void BK_Light(uint8_t Light)
 {   
     if(Light > 100) Light = 100;
-    uint16_t Duty = LEDC_MAX_Duty-(81*(100-Light));
-    if(Light == 0) Duty = 0;
+    uint16_t Duty = LEDC_MAX_Duty * Light / 100;  // 0 -> off, 1 -> 81/8191
     // 设置PWM占空比
     ledc_set_duty(ledc_channel.speed_mode, ledc_channel.channel, Duty);
     ledc_update_duty(ledc_channel.speed_mode, ledc_channel.channel);
