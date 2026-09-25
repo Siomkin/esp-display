@@ -202,6 +202,9 @@ At other brightness levels (0%, 1%, 5%, 10%, 25%), brightness stays fixed.
 - **Bottom Left**: Humidity percentage (white, 20pt)
 - **Bottom Right**: Illuminance in lux (white, 32pt)
 - **Background**: Black
+- **Missing or stale data**: a sensor with no update for 5 minutes shows `--` (`--°C`, `Hum: --%`,
+  `-- lx`) and leaves a gap in the trend. The clock keeps counting between time messages and shows
+  `--:--` only after 1 hour without one; before a date arrives it still applies the timezone offset.
 
 ### Color Scheme
 
@@ -262,7 +265,7 @@ Built-in ESP-IDF components:
 
 ### MQTT Not Receiving Data
 
-**Symptoms**: No sensor data on display, MQTT connection fails
+**Symptoms**: No sensor data on display (`--` values or `--:--` clock), MQTT connection fails
 
 **Solutions**:
 - Verify broker URI in `config/app_config.h`
@@ -271,6 +274,7 @@ Built-in ESP-IDF components:
 - Confirm WiFi is connected (`Got IP` in serial) — MQTT auto-reconnects after WiFi recovers
 - Test broker with: `mosquitto_sub -h BROKER_IP -t '#' -v`
 - Check MQTT logs in serial output with tag `[MQTT]`
+- One field shows `--` while others update: that topic has been silent for 5+ minutes (check the sensor)
 
 ### Display Issues
 

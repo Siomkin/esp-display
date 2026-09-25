@@ -83,14 +83,14 @@ void BK_Init(void)
         .timer_num = LEDC_HS_TIMER,
         .clk_cfg = LEDC_AUTO_CLK
     };
-    ledc_timer_config(&ledc_timer);
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
     ledc_channel.channel    = LEDC_HS_CH0_CHANNEL;
     ledc_channel.duty       = 0;
     ledc_channel.gpio_num   = EXAMPLE_PIN_NUM_BK_LIGHT;
     ledc_channel.speed_mode = LEDC_LS_MODE;
     ledc_channel.timer_sel  = LEDC_HS_TIMER;
-    ledc_channel_config(&ledc_channel);
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 }
 void BK_Light(uint8_t Light)
 {   

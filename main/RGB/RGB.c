@@ -69,7 +69,11 @@ static void rgb_task_fn(void *arg)
     }
 }
 
-void RGB_Start(void)
+esp_err_t RGB_Start(void)
 {
-    xTaskCreate(rgb_task_fn, "rgb", 4096, NULL, 4, &rgb_task);
+    if (xTaskCreate(rgb_task_fn, "rgb", 4096, NULL, 4, &rgb_task) != pdPASS) {
+        ESP_LOGE("RGB", "Failed to create RGB task");
+        return ESP_FAIL;
+    }
+    return ESP_OK;
 }

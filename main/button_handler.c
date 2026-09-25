@@ -75,13 +75,13 @@ esp_err_t button_handler_init(void)
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE
     };
-    gpio_config(&io_conf);
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
 
     // Install ISR service
-    gpio_install_isr_service(0);
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
     // Attach interrupt handler
-    gpio_isr_handler_add(BUTTON_BOOT_GPIO, button_isr_handler, NULL);
+    ESP_ERROR_CHECK(gpio_isr_handler_add(BUTTON_BOOT_GPIO, button_isr_handler, NULL));
 
     ESP_LOGI(TAG, "Button handler initialized");
     ESP_LOGI(TAG, "GPIO %d (BOOT): Short press = Cycle backlight (5%%->10%%->25%%->100%%->0%%->1%%->5%%), Long press = RGB LED on/off", BUTTON_BOOT_GPIO);

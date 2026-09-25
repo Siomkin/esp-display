@@ -1,5 +1,6 @@
 #include "mqtt_handler.h"
 #include "esp_log.h"
+#include "esp_check.h"
 #include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -19,14 +20,15 @@ static const struct {
     const char *topic;
     float *value;
     bool *valid;
+    TickType_t *tick;
     const char *label;
     int decimals;
     const char *unit;
 } float_topics[] = {
-    { MQTT_TOPIC_TEMP_OUTSIDE, &sensor_data.temp_outside, &sensor_data.temp_outside_valid, "Outside temperature", 1, "°C" },
-    { MQTT_TOPIC_TEMP_INSIDE,  &sensor_data.temp_inside,  &sensor_data.temp_inside_valid,  "Inside temperature",  1, "°C" },
-    { MQTT_TOPIC_HUMIDITY,     &sensor_data.humidity,     &sensor_data.humidity_valid,     "Humidity",            0, "%" },
-    { MQTT_TOPIC_ILLUMINANCE,  &sensor_data.illuminance,  &sensor_data.illuminance_valid,  "Illuminance",         0, " lx" },
+    { MQTT_TOPIC_TEMP_OUTSIDE, &sensor_data.temp_outside, &sensor_data.temp_outside_valid, &sensor_data.temp_outside_tick, "Outside temperature", 1, "°C" },
+    { MQTT_TOPIC_TEMP_INSIDE,  &sensor_data.temp_inside,  &sensor_data.temp_inside_valid,  &sensor_data.temp_inside_tick,  "Inside temperature",  1, "°C" },
+    { MQTT_TOPIC_HUMIDITY,     &sensor_data.humidity,     &sensor_data.humidity_valid,     &sensor_data.humidity_tick,     "Humidity",            0, "%" },
+    { MQTT_TOPIC_ILLUMINANCE,  &sensor_data.illuminance,  &sensor_data.illuminance_valid,  &sensor_data.illuminance_tick,  "Illuminance",         0, " lx" },
 };
 #define FLOAT_TOPIC_COUNT (sizeof(float_topics) / sizeof(float_topics[0]))
 
@@ -75,6 +77,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             if (strcmp(topic, float_topics[i].topic) == 0) {
                 *float_topics[i].value = atof(data);
                 *float_topics[i].valid = true;
+                *float_topics[i].tick = xTaskGetTickCount();
                 ESP_LOGI(TAG, "%s: %.*f%s", float_topics[i].label, float_topics[i].decimals,
                          *float_topics[i].value, float_topics[i].unit);
                 break;
@@ -83,10 +86,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         if (strcmp(topic, MQTT_TOPIC_SYSTEM_DATE) == 0) {
             snprintf(sensor_data.date_str, sizeof(sensor_data.date_str), "%.15s", data);
             sensor_data.date_valid = true;
+            sensor_data.date_tick = xTaskGetTickCount();
             ESP_LOGI(TAG, "Date: %s", sensor_data.date_str);
         } else if (strcmp(topic, MQTT_TOPIC_SYSTEM_TIME) == 0) {
             snprintf(sensor_data.time_str, sizeof(sensor_data.time_str), "%.15s", data);
             sensor_data.time_valid = true;
+            sensor_data.time_tick = xTaskGetTickCount();
             ESP_LOGI(TAG, "Time: %s", sensor_data.time_str);
         }
         xSemaphoreGive(sensor_lock);
@@ -132,8 +137,9 @@ esp_err_t mqtt_client_init(void)
         return ESP_FAIL;
     }
     
-    esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    esp_mqtt_client_start(mqtt_client);
+    ESP_RETURN_ON_ERROR(esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL),
+                        TAG, "Failed to register MQTT events");
+    ESP_RETURN_ON_ERROR(esp_mqtt_client_start(mqtt_client), TAG, "Failed to start MQTT client");
     
     ESP_LOGI(TAG, "MQTT client started");
     return ESP_OK;
@@ -148,5 +154,16 @@ void mqtt_get_sensor_data(sensor_data_t *data)
         xSemaphoreTake(sensor_lock, portMAX_DELAY);
         memcpy(data, &sensor_data, sizeof(sensor_data_t));
         xSemaphoreGive(sensor_lock);
+
+        // Report old values as missing rather than current (unsigned tick math is wrap-safe)
+        TickType_t now = xTaskGetTickCount();
+        #define STALE(tick, ms) ((TickType_t)(now - (tick)) > pdMS_TO_TICKS(ms))
+        if (STALE(data->temp_outside_tick, SENSOR_STALE_MS)) data->temp_outside_valid = false;
+        if (STALE(data->temp_inside_tick, SENSOR_STALE_MS))  data->temp_inside_valid = false;
+        if (STALE(data->humidity_tick, SENSOR_STALE_MS))     data->humidity_valid = false;
+        if (STALE(data->illuminance_tick, SENSOR_STALE_MS))  data->illuminance_valid = false;
+        if (STALE(data->time_tick, CLOCK_STALE_MS))          data->time_valid = false;
+        if (STALE(data->date_tick, CLOCK_STALE_MS))          data->date_valid = false;
+        #undef STALE
     }
 }

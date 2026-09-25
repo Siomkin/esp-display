@@ -34,7 +34,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing hardware...");
     Flash_Searching();
     RGB_Init();
-    RGB_Start();                            // LED stays off until long press enables it
+    ESP_ERROR_CHECK(RGB_Start());           // LED stays off until long press enables it
     SD_Init();                              // SD must be initialized behind the LCD
     LCD_Init();                             // Backlight stays off until the first frame is on the panel
     LVGL_Init();                            // Initialize LVGL
@@ -50,7 +50,7 @@ void app_main(void)
 
     // Button only needs the UI and RGB: usable now, not after the WiFi wait (up to 30s)
     ESP_LOGI(TAG, "Initializing button handlers...");
-    button_handler_init();
+    ESP_ERROR_CHECK(button_handler_init());
 
     // Initialize WiFi (keeps retrying forever if AP is down)
     ESP_LOGI(TAG, "Connecting to WiFi...");
@@ -63,6 +63,6 @@ void app_main(void)
 
     // Start MQTT regardless — client auto-reconnects once WiFi is up
     ESP_LOGI(TAG, "Starting MQTT client...");
-    mqtt_client_init();
+    ESP_ERROR_CHECK(mqtt_client_init());
     // app_main returns; LVGL, MQTT and button work continue in their own tasks
 }

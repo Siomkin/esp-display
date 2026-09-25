@@ -35,6 +35,13 @@ static const uint8_t levels[] = {0, 1, 5, 10, 25, 100};
 #define BOOT_LEVEL   2  // 5%
 static uint8_t backlight_level = BOOT_LEVEL;
 static int8_t night_mode = -1; // -1 unknown, 0 day, 1 night; BK_Light only on change
+static int last_local_hour = -1; // From the clock; -1 until the first time message
+
+// Placeholders: shown before the first reading and whenever a reading goes stale
+#define TIME_NONE   "--:--"
+#define TEMP_NONE   "--°C"
+#define HUM_NONE    "Hum: --%"
+#define LUX_NONE    "-- lx"
 
 // lv_label_set_text() always invalidates, so skip identical text to avoid redraw + SPI flush
 static void set_text_if_changed(lv_obj_t *label, const char *text)
@@ -82,7 +89,7 @@ void weather_station_ui_init(void)
      * Time Display (Top Left, Large)
      *******************************************/
     time_label = lv_label_create(scr);
-    lv_label_set_text(time_label, "00:00");
+    lv_label_set_text(time_label, TIME_NONE);
     lv_obj_set_style_text_color(time_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(time_label, &lv_font_montserrat_48, 0);
     lv_obj_align(time_label, LV_ALIGN_TOP_LEFT, 10, 10);
@@ -100,7 +107,7 @@ void weather_station_ui_init(void)
      * Outside Temperature (Top Right, Large)
      *******************************************/
     temp_outside_label = lv_label_create(scr);
-    lv_label_set_text(temp_outside_label, "--°C");
+    lv_label_set_text(temp_outside_label, TEMP_NONE);
     lv_obj_set_style_text_color(temp_outside_label, lv_color_make(255, 215, 0), 0); // Gold
     lv_obj_set_style_text_font(temp_outside_label, &lv_font_montserrat_48, 0); // Large for visibility
     lv_obj_align(temp_outside_label, LV_ALIGN_TOP_RIGHT, -10, 10);
@@ -109,7 +116,7 @@ void weather_station_ui_init(void)
      * Inside Temperature (Below Outside, Orange)
      *******************************************/
     temp_inside_label = lv_label_create(scr);
-    lv_label_set_text(temp_inside_label, "--°C");
+    lv_label_set_text(temp_inside_label, TEMP_NONE);
     lv_obj_set_style_text_color(temp_inside_label, lv_color_make(255, 165, 0), 0); // Orange
     lv_obj_set_style_text_font(temp_inside_label, &lv_font_montserrat_28, 0); 
     lv_obj_align(temp_inside_label, LV_ALIGN_TOP_RIGHT, -10, 70);
@@ -118,7 +125,7 @@ void weather_station_ui_init(void)
      * Humidity Display (Bottom Left)
      *******************************************/
     humidity_label = lv_label_create(scr);
-    lv_label_set_text(humidity_label, "Hum: --%");
+    lv_label_set_text(humidity_label, HUM_NONE);
     lv_obj_set_style_text_color(humidity_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(humidity_label, &lv_font_montserrat_20, 0);
     lv_obj_align(humidity_label, LV_ALIGN_BOTTOM_LEFT, 10, -10);
@@ -127,7 +134,7 @@ void weather_station_ui_init(void)
      * Illuminance Display (Bottom Right)
      *******************************************/
     illuminance_label = lv_label_create(scr);
-    lv_label_set_text(illuminance_label, "0 lx");
+    lv_label_set_text(illuminance_label, LUX_NONE);
     lv_obj_set_style_text_color(illuminance_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(illuminance_label, &lv_font_montserrat_32, 0);
     lv_obj_align(illuminance_label, LV_ALIGN_BOTTOM_RIGHT, -10, -10);
@@ -156,13 +163,33 @@ void weather_station_ui_init(void)
     ESP_LOGI(TAG, "Weather station UI initialized");
 }
 
+// Auto level only: 1% inside the night window, 100% outside it or while the local hour is unknown.
+// Callers hold the LVGL lock (UI timer, button task), which also guards night_mode/last_local_hour.
+static void apply_auto_brightness(void)
+{
+    if (backlight_level != AUTO_LEVEL) {
+        return;
+    }
+    int h = last_local_hour;
+    // Window may cross midnight (22-8) or not (1-6); START == END disables night mode
+    int8_t is_night = (h >= 0) && ((NIGHT_MODE_START_HOUR <= NIGHT_MODE_END_HOUR)
+        ? (h >= NIGHT_MODE_START_HOUR && h < NIGHT_MODE_END_HOUR)
+        : (h >= NIGHT_MODE_START_HOUR || h < NIGHT_MODE_END_HOUR));
+    if (is_night != night_mode) {
+        night_mode = is_night;
+        BK_Light(is_night ? 1 : levels[AUTO_LEVEL]);
+    }
+}
+
 void weather_station_cycle_backlight(void)
 {
     backlight_level = (backlight_level + 1) % LEVEL_COUNT;
     if (backlight_level == AUTO_LEVEL) {
-        night_mode = -1;  // Re-evaluate on next UI update
+        night_mode = -1;
+        apply_auto_brightness();  // Straight to the right level: no 100% flash at night
+    } else {
+        BK_Light(levels[backlight_level]);
     }
-    BK_Light(levels[backlight_level]);
     ESP_LOGI(TAG, "Backlight: %u%%%s", levels[backlight_level],
              backlight_level == AUTO_LEVEL ? " (Auto mode enabled)" : "");
 }
@@ -178,65 +205,56 @@ void weather_station_ui_update(void)
     sensor_data_t sensor_data;
     mqtt_get_sensor_data(&sensor_data);
 
-    // Update Time and Date with TIMEZONE_OFFSET_HOURS applied
-    if (sensor_data.date_valid && sensor_data.time_valid) {
-        int year, month, day, hour, min;
-        // Parse "YYYY-MM-DD" and "HH:MM"
-        if (sscanf(sensor_data.date_str, "%d-%d-%d", &year, &month, &day) == 3 &&
-            sscanf(sensor_data.time_str, "%d:%d", &hour, &min) == 2) {
-            
-            struct tm tm_utc = {0};
-            tm_utc.tm_year = year - 1900;
-            tm_utc.tm_mon = month - 1;
-            tm_utc.tm_mday = day;
-            tm_utc.tm_hour = hour;
-            tm_utc.tm_min = min;
-            tm_utc.tm_sec = 0;
-            tm_utc.tm_isdst = 0;
-            
-            // Convert to timestamp (assuming default TZ is UTC/GMT)
-            time_t t = mktime(&tm_utc);
-            
-            // Add timezone offset
-            t += TIMEZONE_OFFSET_HOURS * 3600;
-            
-            // Convert back to broken-down time
-            struct tm *tm_local = localtime(&t);
-            
-            // Update Text
-            char time_out[16];
-            strftime(time_out, sizeof(time_out), "%H:%M", tm_local);
-            set_text_if_changed(time_label, time_out);
-            
-            char date_out[32];
-            strftime(date_out, sizeof(date_out), "%a, %d %b", tm_local);
-            for (int i = 0; date_out[i]; i++) {
-                if (date_out[i] >= 'a' && date_out[i] <= 'z') {
-                    date_out[i] = date_out[i] - 32;
-                }
-            }
-            set_text_if_changed(date_label, date_out);
-            
-            // Auto Brightness (Night Mode)
-            // 22:00 to 08:00 -> 1%, then restore previous brightness
-            if (backlight_level == AUTO_LEVEL) {
-                int h = tm_local->tm_hour;
-                // Window may cross midnight (22-8) or not (1-6); START == END disables night mode
-                int8_t is_night = (NIGHT_MODE_START_HOUR <= NIGHT_MODE_END_HOUR)
-                    ? (h >= NIGHT_MODE_START_HOUR && h < NIGHT_MODE_END_HOUR)
-                    : (h >= NIGHT_MODE_START_HOUR || h < NIGHT_MODE_END_HOUR);
-                if (is_night != night_mode) {
-                    night_mode = is_night;
-                    // Night: 1%, day: restore saved brightness
-                    BK_Light(is_night ? 1 : levels[AUTO_LEVEL]);
-                }
+    // Clock: MQTT UTC time + TIMEZONE_OFFSET_HOURS, counting on the tick timer since the last
+    // time message so late/missing messages don't freeze it (time goes invalid after CLOCK_STALE_MS)
+    int year = 0, month = 0, day = 0, hour = 0, min = 0;
+    int elapsed_s = (int)((xTaskGetTickCount() - sensor_data.time_tick) / configTICK_RATE_HZ);
+    bool time_ok = sensor_data.time_valid && sscanf(sensor_data.time_str, "%d:%d", &hour, &min) == 2;
+    bool date_ok = sensor_data.date_valid && sscanf(sensor_data.date_str, "%d-%d-%d", &year, &month, &day) == 3;
+    if (!time_ok) {
+        set_text_if_changed(time_label, TIME_NONE);  // Date keeps its last text
+    } else if (!date_ok) {
+        // No date yet: offset the hour only, wrapping at 24
+        int mins = ((hour * 60 + min + elapsed_s / 60 + TIMEZONE_OFFSET_HOURS * 60) % 1440 + 1440) % 1440;
+        char time_out[16];
+        snprintf(time_out, sizeof(time_out), "%02d:%02d", mins / 60, mins % 60);
+        set_text_if_changed(time_label, time_out);
+        last_local_hour = mins / 60;
+    } else {
+        struct tm tm_utc = {0};
+        tm_utc.tm_year = year - 1900;
+        tm_utc.tm_mon = month - 1;
+        tm_utc.tm_mday = day;
+        tm_utc.tm_hour = hour;
+        tm_utc.tm_min = min;
+        tm_utc.tm_sec = 0;
+        tm_utc.tm_isdst = 0;
+        
+        // Convert to timestamp (assuming default TZ is UTC/GMT)
+        time_t t = mktime(&tm_utc);
+        
+        // Time counted since the last message, then the timezone offset
+        t += elapsed_s + TIMEZONE_OFFSET_HOURS * 3600;
+        
+        // Convert back to broken-down time
+        struct tm *tm_local = localtime(&t);
+        
+        // Update Text
+        char time_out[16];
+        strftime(time_out, sizeof(time_out), "%H:%M", tm_local);
+        set_text_if_changed(time_label, time_out);
+        
+        char date_out[32];
+        strftime(date_out, sizeof(date_out), "%a, %d %b", tm_local);
+        for (int i = 0; date_out[i]; i++) {
+            if (date_out[i] >= 'a' && date_out[i] <= 'z') {
+                date_out[i] = date_out[i] - 32;
             }
         }
-    } else {
-        // Fallback to raw data
-        if (sensor_data.time_valid) set_text_if_changed(time_label, sensor_data.time_str);
-        if (sensor_data.date_valid) set_text_if_changed(date_label, sensor_data.date_str);
+        set_text_if_changed(date_label, date_out);
+        last_local_hour = tm_local->tm_hour;
     }
+    apply_auto_brightness();  // Stale clock: keeps the last known hour
     
     // Start the trend immediately instead of an empty chart for the first minute
     if (!trend_started && sensor_data.temp_outside_valid) {
@@ -250,6 +268,8 @@ void weather_station_ui_update(void)
         char temp_str[16];
         snprintf(temp_str, sizeof(temp_str), "%.1f°C", sensor_data.temp_outside);
         set_text_if_changed(temp_outside_label, temp_str);
+    } else {
+        set_text_if_changed(temp_outside_label, TEMP_NONE);
     }
 
     // Update inside temperature
@@ -257,6 +277,8 @@ void weather_station_ui_update(void)
         char temp_str[16];
         snprintf(temp_str, sizeof(temp_str), "%.1f°C", sensor_data.temp_inside);
         set_text_if_changed(temp_inside_label, temp_str);
+    } else {
+        set_text_if_changed(temp_inside_label, TEMP_NONE);
     }
     
     // Update humidity
@@ -264,6 +286,8 @@ void weather_station_ui_update(void)
         char hum_str[32];
         snprintf(hum_str, sizeof(hum_str), "Hum: %.0f%%", sensor_data.humidity);
         set_text_if_changed(humidity_label, hum_str);
+    } else {
+        set_text_if_changed(humidity_label, HUM_NONE);
     }
     
     // Update illuminance
@@ -271,5 +295,7 @@ void weather_station_ui_update(void)
         char lux_str[32];
         snprintf(lux_str, sizeof(lux_str), "%.0f lx", sensor_data.illuminance);
         set_text_if_changed(illuminance_label, lux_str);
+    } else {
+        set_text_if_changed(illuminance_label, LUX_NONE);
     }
 }

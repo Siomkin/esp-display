@@ -85,8 +85,11 @@ This document provides context for AI assistants working on this project.
 ### MQTT Data Flow
 1. Subscribe to topics on connection
 2. Parse incoming messages in `mqtt_event_handler()`
-3. Store in `sensor_data_t` structure
-4. UI updates every 1 second via `weather_station_ui_update()`
+3. Store in `sensor_data_t` structure, with the update tick per value
+4. `mqtt_get_sensor_data()` reports values older than `SENSOR_STALE_MS` (5 min; time/date
+   `CLOCK_STALE_MS`, 60 min) as not valid → UI shows `--`, trend gets a gap
+5. UI updates every 1 second via `weather_station_ui_update()`; the clock adds the time elapsed
+   since the last time message (`time_tick`), so it counts between messages
 
 ### Button State Machine
 ```
