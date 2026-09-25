@@ -14,7 +14,6 @@
 
 /* Event bits */
 #define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
 
 /**
  * @brief Initialize WiFi and start connecting to the configured network.
@@ -23,15 +22,3 @@
  *         (background reconnect continues either way)
  */
 esp_err_t wifi_connect_init(void);
-
-/**
- * @brief Check if WiFi is connected
- * @return true if connected, false otherwise
- */
-bool wifi_is_connected(void);
-
-/**
- * @brief Get the WiFi event group handle
- * @return EventGroupHandle_t
- */
-EventGroupHandle_t wifi_get_event_group(void);

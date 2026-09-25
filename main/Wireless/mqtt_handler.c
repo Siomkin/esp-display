@@ -9,7 +9,6 @@
 static const char *TAG = "MQTT";
 static esp_mqtt_client_handle_t mqtt_client = NULL;
 static sensor_data_t sensor_data = {0};
-static bool mqtt_connected = false;
 // Guards sensor_data: written by the MQTT task, read by the UI (LVGL) task
 static StaticSemaphore_t sensor_lock_buf;
 static SemaphoreHandle_t sensor_lock = NULL;
@@ -21,7 +20,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        mqtt_connected = true;
         
         // Subscribe to all topics
         esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_TEMP_OUTSIDE, 0);
@@ -36,7 +34,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-        mqtt_connected = false;
         break;
         
     case MQTT_EVENT_DATA:
@@ -143,9 +140,4 @@ void mqtt_get_sensor_data(sensor_data_t *data)
         memcpy(data, &sensor_data, sizeof(sensor_data_t));
         xSemaphoreGive(sensor_lock);
     }
-}
-
-bool mqtt_is_connected(void)
-{
-    return mqtt_connected;
 }

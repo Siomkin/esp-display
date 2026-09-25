@@ -79,7 +79,6 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         if (s_reconnect_timer != NULL) {
             xTimerStop(s_reconnect_timer, 0);
         }
-        xEventGroupClearBits(s_wifi_event_group, WIFI_FAIL_BIT);
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
@@ -135,14 +134,4 @@ esp_err_t wifi_connect_init(void)
 
     ESP_LOGW(TAG, "WiFi not ready yet (SSID:%s); will keep retrying in background", WIFI_SSID);
     return ESP_ERR_TIMEOUT;
-}
-
-bool wifi_is_connected(void)
-{
-    return s_is_connected;
-}
-
-EventGroupHandle_t wifi_get_event_group(void)
-{
-    return s_wifi_event_group;
 }

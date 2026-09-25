@@ -20,8 +20,6 @@
 #define LCD_HOST  SPI2_HOST
 
 #define EXAMPLE_LCD_PIXEL_CLOCK_HZ     (40 * 1000 * 1000)   // was 12MHz; drop to 20MHz if you see artifacts (SCLK/MOSI go via GPIO matrix)
-#define EXAMPLE_LCD_BK_LIGHT_ON_LEVEL  1
-#define EXAMPLE_LCD_BK_LIGHT_OFF_LEVEL !EXAMPLE_LCD_BK_LIGHT_ON_LEVEL
 #define EXAMPLE_PIN_NUM_SCLK           7
 #define EXAMPLE_PIN_NUM_MOSI           6
 #define EXAMPLE_PIN_NUM_LCD_CS         14
@@ -41,9 +39,7 @@
 
 #define LEDC_HS_TIMER          LEDC_TIMER_0
 #define LEDC_LS_MODE           LEDC_LOW_SPEED_MODE
-#define LEDC_HS_CH0_GPIO       EXAMPLE_PIN_NUM_BK_LIGHT
 #define LEDC_HS_CH0_CHANNEL    LEDC_CHANNEL_0
-#define LEDC_TEST_DUTY         (4000)
 #define LEDC_ResolutionRatio   LEDC_TIMER_13_BIT
 #define LEDC_MAX_Duty          ((1 << LEDC_ResolutionRatio) - 1)
 

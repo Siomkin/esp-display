@@ -29,7 +29,6 @@ static lv_timer_t *trend_timer;
 static bool trend_started = false;  // First sample is taken as soon as data arrives
 
 // State control
-static bool is_display_enabled = true;
 static bool is_rgb_enabled = false; // RGB disabled by default
 static uint8_t backlight_level = 2; // Matches the 5% set in main() (0=off, 1=1%, 2=5%, 3=10%, 4=25%, 5=100%)
 static bool auto_brightness_enabled = false;
@@ -195,15 +194,6 @@ void weather_station_cycle_backlight(void)
             BK_Light(100);
             ESP_LOGI(TAG, "Backlight: 100%% (Auto mode enabled)");
             break;
-    }
-}
-
-void weather_station_toggle_display(void)
-{
-    is_display_enabled = !is_display_enabled;
-    if (panel_handle) {
-         esp_lcd_panel_disp_on_off(panel_handle, is_display_enabled);
-         ESP_LOGI(TAG, "Display %s", is_display_enabled ? "ON" : "OFF");
     }
 }
 

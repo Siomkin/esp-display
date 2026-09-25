@@ -2,8 +2,6 @@
 
 static const char *SD_TAG = "SD";
 
-uint32_t Flash_Size = 0;
-
 // Initializes the SPI bus shared with the LCD. The SD card itself is not mounted (unused);
 // its CS is held high so the card ignores LCD traffic on the shared MOSI/SCLK lines.
 void SD_Init(void)
@@ -29,6 +27,7 @@ void SD_Init(void)
 
 void Flash_Searching(void)
 {
+    uint32_t Flash_Size = 0;
     if(esp_flash_get_physical_size(NULL, &Flash_Size) == ESP_OK)
     {
         Flash_Size = Flash_Size / (uint32_t)(1024 * 1024);

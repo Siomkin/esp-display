@@ -21,11 +21,6 @@ void weather_station_ui_update(void);
 void weather_station_cycle_backlight(void);
 
 /**
- * @brief Toggle display on/off
- */
-void weather_station_toggle_display(void);
-
-/**
  * @brief Toggle RGB LED on/off
  */
 void weather_station_toggle_rgb(void);

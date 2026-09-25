@@ -111,7 +111,6 @@ esp_err_t esp_lcd_new_panel_st7789t(const esp_lcd_panel_io_handle_t io, const es
     st7789t->base.disp_on_off = panel_st7789t_disp_on_off;
     *ret_panel = &(st7789t->base);
     ESP_LOGD(TAG, "new st7789t panel @%p", st7789t);
-    // printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n");
     return ESP_OK;
 
 err:
@@ -160,11 +159,8 @@ static esp_err_t panel_st7789t_init(esp_lcd_panel_t *panel)
     st7789t_panel_t *st7789t = __containerof(panel, st7789t_panel_t, base);
     esp_lcd_panel_io_handle_t io = st7789t->io;
     // LCD goes into sleep mode and display will be turned off after power on reset, exit sleep mode first
-    // printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n");
     esp_lcd_panel_io_tx_param(io, LCD_CMD_SLPOUT, NULL, 0);
     vTaskDelay(pdMS_TO_TICKS(100));
-    // esp_lcd_panel_io_tx_param(io, LCD_CMD_MADCTL, (uint8_t[]) {st7789t->madctl_val,}, 1);
-    // esp_lcd_panel_io_tx_param(io, LCD_CMD_COLMOD, (uint8_t[]) {st7789t->colmod_cal,}, 1);
     
     /* Memory Data Access Control, MX=MV=1, MY=ML=MH=0, RGB=0 */
     esp_lcd_panel_io_tx_param(io, 0x36, (uint8_t []){0x00}, 1);                           // 0x36: 接口像素格式 X镜像，Y镜像
@@ -194,12 +190,10 @@ static esp_err_t panel_st7789t_init(esp_lcd_panel_t *panel)
     esp_lcd_panel_io_tx_param(io, 0xE0, (uint8_t []){0xD0, 0x0D, 0x14, 0x0D, 0x0D, 0x09, 0x38, 0x44, 0x4E, 0x3A, 0x17, 0x18, 0x2F, 0x30}, 14);
     /* Negative Voltage Gamma Control */
     esp_lcd_panel_io_tx_param(io, 0xE1, (uint8_t []){0xD0, 0x09, 0x0F, 0x08, 0x07, 0x14, 0x37, 0x44, 0x4D, 0x38, 0x15, 0x16, 0x2C, 0x2E}, 14);
-    /* Sleep Out */
+    /* Display Inversion On */
     esp_lcd_panel_io_tx_param(io, 0x21, NULL, 0);
     /* Display On */
     esp_lcd_panel_io_tx_param(io, 0x29, NULL, 0);
-
-    esp_lcd_panel_io_tx_param(io, 0x2C, NULL, 0);
 
     return ESP_OK;
 }

@@ -53,7 +53,7 @@ void RGB_Init(void)
     led_strip_clear(led_strip);
 }
 
-void Set_RGB( uint8_t red_val, uint8_t green_val, uint8_t blue_val)
+static void Set_RGB(uint8_t red_val, uint8_t green_val, uint8_t blue_val)
 {
     /* Set the LED pixel using RGB from 0 (0%) to 255 (100%) for each color */
     led_strip_set_pixel(led_strip, 0, red_val, green_val, blue_val);

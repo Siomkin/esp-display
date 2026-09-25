@@ -49,7 +49,6 @@ None found.
   Delete them.
 - [ ] 15. Leftovers in `Vernon_ST7789T.c`:
   - commented-out `printf("AAAA…")` (:115, :164) and commented-out MADCTL and COLMOD writes (:167-168);
-  - a duplicate `break;` (:81);
   - a bare `0x2C` RAMWR with no data (:203);
   - the comment "Sleep Out" (:198) on `0x21`, which is Display Inversion On.
 

@@ -7,17 +7,6 @@ esp_lcd_panel_io_handle_t io_handle = NULL;
 
 void LCD_Init(void)
 {
-    // ESP_LOGI(TAG_LCD, "Initialize SPI bus");                                            
-    // spi_bus_config_t buscfg = {                                                         
-    //     .sclk_io_num = EXAMPLE_PIN_NUM_SCLK,                                            
-    //     .mosi_io_num = EXAMPLE_PIN_NUM_MOSI,                                            
-    //     .miso_io_num = EXAMPLE_PIN_NUM_MISO,                                            
-    //     .quadwp_io_num = -1,                                                            
-    //     .quadhd_io_num = -1,                                                            
-    //     .max_transfer_sz = EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES * sizeof(uint16_t),    
-    // };
-    // ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));            
-
     ESP_LOGI(TAG_LCD, "Install panel IO");                                              
     esp_lcd_panel_io_spi_config_t io_config = {                                             
         .dc_gpio_num = EXAMPLE_PIN_NUM_LCD_DC,
@@ -77,7 +66,6 @@ void BK_Init(void)
     ledc_channel.speed_mode = LEDC_LS_MODE;
     ledc_channel.timer_sel  = LEDC_HS_TIMER;
     ledc_channel_config(&ledc_channel);
-    ledc_fade_func_install(0);
 }
 void BK_Light(uint8_t Light)
 {   

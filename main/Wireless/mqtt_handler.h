@@ -32,9 +32,3 @@ esp_err_t mqtt_client_init(void);
  * @param data Pointer to sensor_data_t structure to fill
  */
 void mqtt_get_sensor_data(sensor_data_t *data);
-
-/**
- * @brief Check if MQTT client is connected
- * @return true if connected, false otherwise
- */
-bool mqtt_is_connected(void);
