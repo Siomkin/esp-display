@@ -147,10 +147,10 @@ idf.py -p /dev/cu.usbmodem21201 flash
 
 ### Adding New MQTT Topic
 1. Add define to `config/app_config.h` and `config/app_config.h.example`: `#define MQTT_TOPIC_NEW "/path/to/topic"`
-2. Subscribe in `mqtt_handler.c`: `esp_mqtt_client_subscribe()`
-3. Parse in `mqtt_event_handler()`: Add `else if` case
-4. Add field to `sensor_data_t` structure
-5. Update UI in `weather_station_ui.c`
+2. Add a value + `_valid` field to `sensor_data_t` (`mqtt_handler.h`)
+3. Numeric value: add one row to `float_topics[]` in `mqtt_handler.c` (subscribe, parse and log come from it).
+   String value: add a subscribe call and a `strcmp` case next to date/time
+4. Update UI in `weather_station_ui.c`
 
 ### Changing Button Behavior
 1. Modify `button_handler.c`: Update `button_task()` logic

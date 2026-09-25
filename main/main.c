@@ -5,6 +5,7 @@
  */
 
 #include "ST7789.h"
+#include "LVGL_Driver.h"
 #include "SD_SPI.h"
 #include "RGB.h"
 #include "wifi_connect.h"

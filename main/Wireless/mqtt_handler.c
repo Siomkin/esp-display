@@ -13,6 +13,23 @@ static sensor_data_t sensor_data = {0};
 static StaticSemaphore_t sensor_lock_buf;
 static SemaphoreHandle_t sensor_lock = NULL;
 
+// Numeric sensor topics: one row per topic handles subscribe, parse and log.
+// Date and time are strings and stay as explicit cases below.
+static const struct {
+    const char *topic;
+    float *value;
+    bool *valid;
+    const char *label;
+    int decimals;
+    const char *unit;
+} float_topics[] = {
+    { MQTT_TOPIC_TEMP_OUTSIDE, &sensor_data.temp_outside, &sensor_data.temp_outside_valid, "Outside temperature", 1, "°C" },
+    { MQTT_TOPIC_TEMP_INSIDE,  &sensor_data.temp_inside,  &sensor_data.temp_inside_valid,  "Inside temperature",  1, "°C" },
+    { MQTT_TOPIC_HUMIDITY,     &sensor_data.humidity,     &sensor_data.humidity_valid,     "Humidity",            0, "%" },
+    { MQTT_TOPIC_ILLUMINANCE,  &sensor_data.illuminance,  &sensor_data.illuminance_valid,  "Illuminance",         0, " lx" },
+};
+#define FLOAT_TOPIC_COUNT (sizeof(float_topics) / sizeof(float_topics[0]))
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
@@ -22,12 +39,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         
         // Subscribe to all topics
-        esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_TEMP_OUTSIDE, 0);
-        esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_TEMP_INSIDE, 0);
-        esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_HUMIDITY, 0);
+        for (size_t i = 0; i < FLOAT_TOPIC_COUNT; i++) {
+            esp_mqtt_client_subscribe(mqtt_client, float_topics[i].topic, 0);
+        }
         esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_SYSTEM_DATE, 0);
         esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_SYSTEM_TIME, 0);
-        esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC_ILLUMINANCE, 0);
         
         ESP_LOGI(TAG, "Subscribed to sensor and time topics");
         break;
@@ -55,19 +71,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         
         // Update sensor data based on topic
         xSemaphoreTake(sensor_lock, portMAX_DELAY);
-        if (strcmp(topic, MQTT_TOPIC_TEMP_OUTSIDE) == 0) {
-            sensor_data.temp_outside = atof(data);
-            sensor_data.temp_outside_valid = true;
-            ESP_LOGI(TAG, "Outside temperature: %.1f°C", sensor_data.temp_outside);
-        } else if (strcmp(topic, MQTT_TOPIC_TEMP_INSIDE) == 0) {
-            sensor_data.temp_inside = atof(data);
-            sensor_data.temp_inside_valid = true;
-            ESP_LOGI(TAG, "Inside temperature: %.1f°C", sensor_data.temp_inside);
-        } else if (strcmp(topic, MQTT_TOPIC_HUMIDITY) == 0) {
-            sensor_data.humidity = atof(data);
-            sensor_data.humidity_valid = true;
-            ESP_LOGI(TAG, "Humidity: %.0f%%", sensor_data.humidity);
-        } else if (strcmp(topic, MQTT_TOPIC_SYSTEM_DATE) == 0) {
+        for (size_t i = 0; i < FLOAT_TOPIC_COUNT; i++) {
+            if (strcmp(topic, float_topics[i].topic) == 0) {
+                *float_topics[i].value = atof(data);
+                *float_topics[i].valid = true;
+                ESP_LOGI(TAG, "%s: %.*f%s", float_topics[i].label, float_topics[i].decimals,
+                         *float_topics[i].value, float_topics[i].unit);
+                break;
+            }
+        }
+        if (strcmp(topic, MQTT_TOPIC_SYSTEM_DATE) == 0) {
             snprintf(sensor_data.date_str, sizeof(sensor_data.date_str), "%.15s", data);
             sensor_data.date_valid = true;
             ESP_LOGI(TAG, "Date: %s", sensor_data.date_str);
@@ -75,10 +88,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             snprintf(sensor_data.time_str, sizeof(sensor_data.time_str), "%.15s", data);
             sensor_data.time_valid = true;
             ESP_LOGI(TAG, "Time: %s", sensor_data.time_str);
-        } else if (strcmp(topic, MQTT_TOPIC_ILLUMINANCE) == 0) {
-            sensor_data.illuminance = atof(data);
-            sensor_data.illuminance_valid = true;
-            ESP_LOGI(TAG, "Illuminance: %.0f lx", sensor_data.illuminance);
         }
         xSemaphoreGive(sensor_lock);
         break;

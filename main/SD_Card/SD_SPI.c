@@ -1,4 +1,5 @@
 #include "SD_SPI.h"
+#include "LVGL_Driver.h"  // LVGL_BUF_LEN sizes the shared SPI bus transfers
 
 static const char *SD_TAG = "SD";
 

@@ -10,11 +10,9 @@
 #include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "lvgl.h"
 #include "driver/ledc.h"
 
 #include "Vernon_ST7789T.h"
-#include "LVGL_Driver.h"
 // LCD SPI GPIO
 // Using SPI2 
 #define LCD_HOST  SPI2_HOST

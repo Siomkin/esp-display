@@ -1,11 +1,10 @@
 #pragma once
 
 #include "lvgl.h"
-#include "mqtt_client.h"
 
 /**
  * @brief Initialize the weather station UI
- * Creates a beautiful display showing time, date, temperature, humidity, and pressure
+ * Creates the display: time, date, outside/inside temperature with trend, humidity, illuminance
  */
 void weather_station_ui_init(void);
 
