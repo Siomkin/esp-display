@@ -15,6 +15,7 @@ None found.
 
 - [x] 1. (0e2c282) `MQTT_USERNAME` / `MQTT_PASSWORD` are documented in `config/app_config.h.example:25-26` ("Optional: leave empty if not required") but never read: `mqtt_cfg` in `main/Wireless/mqtt_handler.c:110-118` sets only URI and client ID. A broker that needs a login rejects the board, and nothing in the code shows why. Set `.credentials.username` and `.credentials.authentication.password` in `mqtt_cfg`, passing `NULL` when the string is empty (`MQTT_USERNAME[0] ? MQTT_USERNAME : NULL`).
 - [x] 2. (0e2c282) The night-mode check `h >= NIGHT_MODE_START_HOUR || h < NIGHT_MODE_END_HOUR` (`main/LVGL_UI/weather_station_ui.c:266`) only works when the window crosses midnight. The config comment (`app_config.h.example:49`) allows any start and end, but with `START=1, END=6` every hour counts as night (24 of 24, checked), so the "auto" level stays at 1% all day. Use Decompose Conditional: `START <= END ? (h >= START && h < END) : (h >= START || h < END)`.
+- [ ] 18. Sensor values and the clock never go stale. Nothing ever sets a `_valid` flag back to false (`grep '_valid = false' main` finds nothing), and `MQTT_EVENT_DISCONNECTED` (`mqtt_handler.c:51-53`) only logs. If a sensor, the broker or WiFi stops, the screen keeps showing the last values as if they were live. The clock (driven only by the `current_time` topic) freezes at the last minute it received, and `trend_sample_cb()` (`weather_station_ui.c:52-71`) keeps plotting the last outside temperature once a minute, so the 2-hour trend draws a flat line of made-up data. Fix: store a `TickType_t` last-update time next to each value in `sensor_data_t`, set it where `valid` is set, and have `mqtt_get_sensor_data()` report a value as invalid once it's older than a timeout. The UI then shows `--` and the trend gets a gap (`LV_CHART_POINT_NONE`). `Needs a decision`: the timeout (for example 5 min for sensors, 2 min for the clock) and whether a stale clock shows `--:--` or keeps counting.
 
 ## P2: Inconsistent or costly to change
 
@@ -23,6 +24,15 @@ None found.
 - [x] 5. (0e2c282) `BK_Light()` does not produce the percentages the rest of the code names (`main/LCD_Driver/ST7789.c:85`): `LEDC_MAX_Duty - 81*(100-Light)` uses 81 where 8191/100 ≈ 81.91 would be right. The measured duty is 1%→2.1%, 5%→6.1%, 10%→11.0%, 25%→25.8%, so "1% night mode" is really twice as bright as documented. Fix: `Duty = LEDC_MAX_Duty * Light / 100`. `Needs a decision.` This dims the low levels on real hardware, so check at night that 1% is still readable. If it isn't, change the level table instead of the formula.
 - [x] 6. (0e2c282) The ST7789T init sends Power Control 1 (`0xD0`) with a two-byte array but a length of 1 (`main/LCD_Driver/Vernon_ST7789T/Vernon_ST7789T.c:193`), so `0xA1` is never sent and the "AVDD=6.8V, AVCL=-4.8V, VDDS=2.3V" in the comment is not what the panel gets. Fix: length `2`. `Needs a decision.` The panel looks fine today, so check the image on hardware before and after.
 - [x] 7. (9b89409) Adding a sensor topic is Shotgun Surgery. It touches the subscribe list (`mqtt_handler.c:27-32`), the `strcmp` chain (:61-85), two fields per value in `sensor_data_t` (`mqtt_handler.h:9-22`), the UI, and the config example; AGENTS.md documents this five-step recipe. Fix: a static table `{topic, float *value, bool *valid}` for the four float topics, looped for both subscribe and parse, with date and time kept as the two string special cases (Replace Conditional with a lookup table). This also removes the duplicated `atof` / `_valid = true` / log blocks.
+- [ ] 19. When the time has arrived but the date hasn't (or fails to parse), the fallback shows the raw UTC time with no timezone offset (`weather_station_ui.c:235-238`, `set_text_if_changed(time_label, sensor_data.time_str)`). With `TIMEZONE_OFFSET_HOURS 3` the clock is 3 h wrong until a date message arrives, which may take up to a day if the controller publishes the date only when it changes and doesn't retain it. The date label also switches to the raw `YYYY-MM-DD` format in the same branch. Fix: in the fallback, parse `HH:MM` and show `(hh + TIMEZONE_OFFSET_HOURS + 24) % 24` (Extract Function for the offset), and leave the date label as it was.
+- [ ] 20. Selecting the auto level at night flashes the backlight to 100% for up to a second. `weather_station_cycle_backlight()` (`weather_station_ui.c:161-165`) sets `night_mode = -1` and calls `BK_Light(100)` straight away. The dim to 1% only happens on the next once-a-second `weather_station_ui_update()` (:222-232), so in a dark room each pass through the cycle blinds the user for up to 1 s. Fix: Extract Function `apply_auto_brightness(hour)` from :222-232, remember the last local hour, and call it from both places so the auto level starts at the right brightness.
+- [ ] 21. Init errors are ignored in some modules while others stop with `ESP_ERROR_CHECK` (the AGENTS.md convention for critical operations). Unchecked calls:
+  - `gpio_config`, `gpio_install_isr_service` and `gpio_isr_handler_add` (`button_handler.c:78-84`); `main.c:53` also discards `button_handler_init()`'s result;
+  - `ledc_timer_config` and `ledc_channel_config` (`ST7789.c:86, 93`);
+  - `xTaskCreate` in `RGB_Start()` (`RGB.c:74`);
+  - `esp_mqtt_client_start` (`mqtt_handler.c:136`); `main.c:66` also discards `mqtt_client_init()`'s result.
+
+  A failure leaves the button, backlight, LED or MQTT silently dead with no log line. If `xTaskCreate` fails, `rgb_task` stays `NULL` and `RGB_Set_Enabled()` quietly does nothing. Fix: wrap them in `ESP_ERROR_CHECK`, matching `SD_Init()` and `LCD_Init()`, and check `pdPASS` in `RGB_Start()` the way `button_handler_init()` already does.
 
 ## P3: Polish
 
@@ -58,3 +68,19 @@ None found.
 ### Headers
 
 - [x] 17. (9b89409) `ST7789.h:17` includes `LVGL_Driver.h`, and `LVGL_Driver.h:8` includes `ST7789.h`; only `#pragma once` stops the loop. `SD_SPI.h` pulls in the whole LCD and LVGL header chain just for two pin numbers and `LVGL_BUF_LEN` (`SD_SPI.c:17`). `weather_station_ui.h:4` includes `mqtt_client.h` without using it, and its doc comment (:8) promises "pressure", which the UI doesn't show (it shows illuminance). Fix: drop the `LVGL_Driver.h` and `lvgl.h` includes from `ST7789.h`, since `ST7789.c` doesn't use LVGL. Then include `LVGL_Driver.h` directly in `main.c` (it needs `LVGL_Init` and `lvgl_port_lock`) and in `SD_SPI.c` (it needs `LVGL_BUF_LEN`). Drop `mqtt_client.h` and correct the comment.
+
+### Backlight driver
+
+- [ ] 22. The PWM resolution is defined twice. `BK_Init()` hard-codes `.duty_resolution = LEDC_TIMER_13_BIT` (`ST7789.c:80`), while `LEDC_MAX_Duty` is derived from `LEDC_ResolutionRatio` (`ST7789.h:40-41`). Changing one without the other makes every level's duty wrong. The macro names also say "HS" (high speed) for a low-speed channel (`LEDC_HS_TIMER`, `LEDC_HS_CH0_CHANNEL`, used with `LEDC_LOW_SPEED_MODE`), and `BK_Init()` is exported (`ST7789.h:47`, "ignore it") though only `LCD_Init()` calls it. Fix: use `LEDC_ResolutionRatio` in `BK_Init()`, rename the macros to `BK_LEDC_TIMER`, `BK_LEDC_CHANNEL` and `BK_LEDC_MODE` (Rename), and make `BK_Init()` `static`.
+
+### Config and logs
+
+- [ ] 23. `sdkconfig.defaults` sets `CONFIG_SPIRAM=y`, `CONFIG_SPIRAM_MODE_OCT=y` and `CONFIG_SPIRAM_SPEED_80M=y`, but the ESP32-C6 has no PSRAM. The build prints `unknown kconfig symbol 'SPIRAM'` and ignores them, so they only mislead readers about the memory available. It also enables `CONFIG_LV_FONT_MONTSERRAT_40`, which no code uses; the linker drops it, so it costs no flash. Delete the four lines.
+- [ ] 24. The MQTT log is flooded. Each message logs 4 INFO lines (`MQTT_EVENT_DATA`, `TOPIC=`, `DATA=`, then the parsed value; `mqtt_handler.c:56-58, 78`), and routine events such as SUBSCRIBED hit the `Other event id` INFO line (:100). A 30 s boot log on the second board had 159 `MQTT:` lines from 37 messages, which buries WiFi and error lines. Meanwhile `MQTT_EVENT_ERROR` (:96) logs at INFO with no details. Fix: demote the three raw lines and the default case to `ESP_LOGD`, and log the error at `ESP_LOGW` with `event->error_handle->error_type`.
+- [ ] 25. Stale or wrong comments:
+  - `weather_station_ui.c:220-221` still says "22:00 to 08:00 -> 1%, then restore previous brightness", and :230 says "restore saved brightness". The window is configurable and `saved_brightness` is gone.
+  - `main.c:38` says "SD must be initialized behind the LCD", but `SD_Init()` creates the SPI bus that `LCD_Init()` attaches to, so it must come *before* it.
+  - `LVGL_Driver.h:13` has a copy-pasted "initialize the screen ... !!!!!".
+  - `#include <sys/time.h>` (`weather_station_ui.c:6`) is unused.
+
+  Correct the comments and drop the include.
