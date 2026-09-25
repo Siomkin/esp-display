@@ -8,7 +8,6 @@
 #include <string.h>
 #include <math.h>
 #include "ST7789.h"
-#include "RGB.h"
 
 static const char *TAG = "WeatherUI";
 
@@ -29,10 +28,12 @@ static lv_timer_t *trend_timer;
 static bool trend_started = false;  // First sample is taken as soon as data arrives
 
 // State control
-static bool is_rgb_enabled = false; // RGB disabled by default
-static uint8_t backlight_level = 2; // Matches the 5% set in main() (0=off, 1=1%, 2=5%, 3=10%, 4=25%, 5=100%)
-static bool auto_brightness_enabled = false;
-static uint8_t saved_brightness = 100; // Store brightness before night mode
+// Short press cycles 5% -> 10% -> 25% -> 100% (auto night mode) -> 0% -> 1% -> 5%
+static const uint8_t levels[] = {0, 1, 5, 10, 25, 100};
+#define LEVEL_COUNT  (sizeof(levels) / sizeof(levels[0]))
+#define AUTO_LEVEL   5  // Only this level follows night mode
+#define BOOT_LEVEL   2  // 5%
+static uint8_t backlight_level = BOOT_LEVEL;
 static int8_t night_mode = -1; // -1 unknown, 0 day, 1 night; BK_Light only on change
 
 // lv_label_set_text() always invalidates, so skip identical text to avoid redraw + SPI flush
@@ -157,51 +158,18 @@ void weather_station_ui_init(void)
 
 void weather_station_cycle_backlight(void)
 {
-    // Cycle through brightness levels: 5% -> 10% -> 25% -> 100% (auto night mode) -> 0% -> 1% -> 5%
-    backlight_level = (backlight_level + 1) % 6;
-    
-    switch (backlight_level) {
-        case 0:
-            BK_Light(0);
-            auto_brightness_enabled = false;
-            ESP_LOGI(TAG, "Backlight: OFF");
-            break;
-        case 1:
-            BK_Light(1);
-            auto_brightness_enabled = false;
-            ESP_LOGI(TAG, "Backlight: 1%%");
-            break;
-        case 2:
-            BK_Light(5);
-            auto_brightness_enabled = false;
-            ESP_LOGI(TAG, "Backlight: 5%%");
-            break;
-        case 3:
-            BK_Light(10);
-            auto_brightness_enabled = false;
-            ESP_LOGI(TAG, "Backlight: 10%%");
-            break;
-        case 4:
-            BK_Light(25);
-            auto_brightness_enabled = false;
-            saved_brightness = 25; // Save for night mode restore
-            ESP_LOGI(TAG, "Backlight: 25%%");
-            break;
-        case 5:
-            auto_brightness_enabled = true;
-            saved_brightness = 100; // Save for night mode restore
-            night_mode = -1; // Re-evaluate on next UI update
-            BK_Light(100);
-            ESP_LOGI(TAG, "Backlight: 100%% (Auto mode enabled)");
-            break;
+    backlight_level = (backlight_level + 1) % LEVEL_COUNT;
+    if (backlight_level == AUTO_LEVEL) {
+        night_mode = -1;  // Re-evaluate on next UI update
     }
+    BK_Light(levels[backlight_level]);
+    ESP_LOGI(TAG, "Backlight: %u%%%s", levels[backlight_level],
+             backlight_level == AUTO_LEVEL ? " (Auto mode enabled)" : "");
 }
 
-void weather_station_toggle_rgb(void)
+void weather_station_backlight_on(void)
 {
-    is_rgb_enabled = !is_rgb_enabled;
-    RGB_Set_Enabled(is_rgb_enabled);
-    ESP_LOGI(TAG, "RGB LED %s", is_rgb_enabled ? "Enabled" : "Disabled");
+    BK_Light(levels[BOOT_LEVEL]);
 }
 
 void weather_station_ui_update(void)
@@ -251,7 +219,7 @@ void weather_station_ui_update(void)
             
             // Auto Brightness (Night Mode)
             // 22:00 to 08:00 -> 1%, then restore previous brightness
-            if (auto_brightness_enabled && backlight_level == 5) {
+            if (backlight_level == AUTO_LEVEL) {
                 int h = tm_local->tm_hour;
                 // Window may cross midnight (22-8) or not (1-6); START == END disables night mode
                 int8_t is_night = (NIGHT_MODE_START_HOUR <= NIGHT_MODE_END_HOUR)
@@ -260,7 +228,7 @@ void weather_station_ui_update(void)
                 if (is_night != night_mode) {
                     night_mode = is_night;
                     // Night: 1%, day: restore saved brightness
-                    BK_Light(is_night ? 1 : saved_brightness);
+                    BK_Light(is_night ? 1 : levels[AUTO_LEVEL]);
                 }
             }
         }

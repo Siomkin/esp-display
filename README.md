@@ -301,7 +301,7 @@ Built-in ESP-IDF components:
 - Long press button to toggle RGB on
 - Verify WS2812 connection to GPIO 8
 - Check power supply (WS2812 can draw significant current)
-- Ensure `is_rgb_enabled` flag is set
+- Ensure `rgb_enabled` in `main/RGB/RGB.c` is toggled (long press)
 
 ### Flash / Serial Connection Issues
 

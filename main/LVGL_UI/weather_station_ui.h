@@ -21,6 +21,7 @@ void weather_station_ui_update(void);
 void weather_station_cycle_backlight(void);
 
 /**
- * @brief Toggle RGB LED on/off
+ * @brief Turn the backlight on at the boot level (call once the first frame is on the panel)
  */
-void weather_station_toggle_rgb(void);
+void weather_station_backlight_on(void);
+

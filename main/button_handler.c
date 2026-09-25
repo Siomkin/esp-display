@@ -1,6 +1,7 @@
 #include "button_handler.h"
 #include "weather_station_ui.h"
 #include "esp_lvgl_port.h"
+#include "RGB.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -48,7 +49,7 @@ static void button_task(void* arg)
         if (press_duration >= BUTTON_LONG_PRESS_MS) {
             // Long press - toggle RGB LED
             ESP_LOGI(TAG, "Long press detected (%lld ms) - Toggling RGB LED", press_duration);
-            weather_station_toggle_rgb();
+            RGB_Toggle();
         } else {
             // Short press - cycle backlight brightness
             ESP_LOGI(TAG, "Short press detected (%lld ms) - Cycling backlight", press_duration);

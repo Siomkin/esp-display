@@ -164,9 +164,8 @@ lv_obj_set_style_text_color(label, lv_color_make(R, G, B), 0);
 ```
 
 ### Changing Brightness Levels
-Edit `weather_station_ui.c` → `weather_station_cycle_backlight()`:
-- Modify `switch` cases
-- Update modulo value: `backlight_level = (backlight_level + 1) % N;`
+Edit `levels[]` at the top of `weather_station_ui.c` (cycle order, in percent). Keep `AUTO_LEVEL`
+(the entry that follows night mode) and `BOOT_LEVEL` (start level) pointing at the right indices.
 
 ## Hardware Pinout
 
@@ -224,7 +223,7 @@ When making changes, verify:
 2. **MQTT no data**: Verify broker URI and topics in `config/app_config.h`
 3. **Display blank**: Check backlight level (press button)
 4. **Button not working**: Verify GPIO 9, check debounce timing
-5. **RGB stuck on**: Long press to toggle, or check `is_rgb_enabled` default
+5. **RGB stuck on**: Long press to toggle, or check the `rgb_enabled` default in `RGB.c`
 
 ### Memory Monitoring
 ```c

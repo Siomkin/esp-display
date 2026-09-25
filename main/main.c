@@ -45,7 +45,7 @@ void app_main(void)
     lv_refr_now(NULL);  // Render and flush the first frame now
     lvgl_port_unlock();
     vTaskDelay(1);      // Double-buffered: last strip's DMA (~1.4ms) may still be in flight
-    BK_Light(5);  // Start with 5% brightness
+    weather_station_backlight_on();  // Boot level (5%) lives in the UI's level table
 
     // Button only needs the UI and RGB: usable now, not after the WiFi wait (up to 30s)
     ESP_LOGI(TAG, "Initializing button handlers...");
