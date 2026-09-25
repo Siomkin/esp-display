@@ -12,7 +12,6 @@
 #include "esp_log.h"
 #include "driver/ledc.h"
 
-#include "Vernon_ST7789T.h"
 // LCD SPI GPIO
 // Using SPI2 
 #define LCD_HOST  SPI2_HOST
