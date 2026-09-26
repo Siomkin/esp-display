@@ -55,9 +55,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
         
     case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        ESP_LOGI(TAG, "TOPIC=%.*s", event->topic_len, event->topic);
-        ESP_LOGI(TAG, "DATA=%.*s", event->data_len, event->data);
+        // Raw lines at DEBUG: the parsed value below is logged at INFO
+        ESP_LOGD(TAG, "MQTT_EVENT_DATA");
+        ESP_LOGD(TAG, "TOPIC=%.*s", event->topic_len, event->topic);
+        ESP_LOGD(TAG, "DATA=%.*s", event->data_len, event->data);
         
         // Parse the data
         char topic[128] = {0};
@@ -98,11 +99,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
         
     case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+        if (event->error_handle && event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+            ESP_LOGW(TAG, "MQTT_EVENT_ERROR: transport, esp_err=0x%x, errno=%d",
+                     event->error_handle->esp_tls_last_esp_err, event->error_handle->esp_transport_sock_errno);
+        } else {
+            ESP_LOGW(TAG, "MQTT_EVENT_ERROR: type=%d", event->error_handle ? event->error_handle->error_type : -1);
+        }
         break;
         
     default:
-        ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+        ESP_LOGD(TAG, "Other event id:%d", event->event_id);
         break;
     }
 }

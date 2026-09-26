@@ -11,7 +11,7 @@
 ## What Changes
 
 - **Backlight driver:** `BK_Init()` uses `LEDC_ResolutionRatio`. The LEDC macros are renamed `BK_LEDC_TIMER`, `BK_LEDC_CHANNEL` and `BK_LEDC_MODE`, and `BK_Init()` becomes `static` (item 22).
-- **Config:** remove `CONFIG_SPIRAM*` (3 lines) and `CONFIG_LV_FONT_MONTSERRAT_40` from `sdkconfig.defaults` (item 23).
+- **Config:** remove `CONFIG_SPIRAM*` (3 lines) and `CONFIG_LV_FONT_MONTSERRAT_40` from `sdkconfig.defaults` (item 23). Also pin `CONFIG_IDF_TARGET="esp32c6"` there: without it, a deleted `sdkconfig` silently regenerates for the ESP32 (found during apply).
 - **Logs:** the raw MQTT event, topic and payload lines and the default-event line move to DEBUG level. `MQTT_EVENT_ERROR` logs at WARN with the error type (item 24).
 - **Comments:** fix the stale comments and drop the unused `<sys/time.h>` include (item 25).
 

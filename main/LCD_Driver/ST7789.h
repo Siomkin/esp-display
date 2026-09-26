@@ -34,9 +34,10 @@
 #define Offset_Y 34
 
 
-#define LEDC_HS_TIMER          LEDC_TIMER_0
-#define LEDC_LS_MODE           LEDC_LOW_SPEED_MODE
-#define LEDC_HS_CH0_CHANNEL    LEDC_CHANNEL_0
+// Backlight PWM (LEDC low-speed channel)
+#define BK_LEDC_TIMER          LEDC_TIMER_0
+#define BK_LEDC_MODE           LEDC_LOW_SPEED_MODE
+#define BK_LEDC_CHANNEL        LEDC_CHANNEL_0
 #define LEDC_ResolutionRatio   LEDC_TIMER_13_BIT
 #define LEDC_MAX_Duty          ((1 << LEDC_ResolutionRatio) - 1)
 
@@ -44,7 +45,6 @@
 extern esp_lcd_panel_handle_t panel_handle;
 extern esp_lcd_panel_io_handle_t io_handle;
 
-void BK_Init(void);                             // Initialize the LCD backlight, which has been called in the LCD_Init function, ignore it                                                         
 void BK_Light(uint8_t Light);                   // Call this function to adjust the brightness of the backlight. The value of the parameter Light ranges from 0 to 100
 
-void LCD_Init(void);                     // Call this function to initialize the screen (must be called in the main function) !!!!!
+void LCD_Init(void);                     // Panel + backlight PWM; call after SD_Init() (creates the SPI bus)

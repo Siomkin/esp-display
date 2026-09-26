@@ -8,7 +8,7 @@ Apply after `fix-stale-data-and-clock`. "Builds clean" means `idf.py build` show
 
 ## 2. Config (AUDIT item 23)
 
-- [ ] 2.1 Delete the three `CONFIG_SPIRAM*` lines and `CONFIG_LV_FONT_MONTSERRAT_40=y` from `sdkconfig.defaults`, then regenerate `sdkconfig` with `idf.py fullclean build`. Verify: the build log has no `unknown kconfig symbol` notes, and the app binary size doesn't grow.
+- [ ] 2.1 Delete the three `CONFIG_SPIRAM*` lines and `CONFIG_LV_FONT_MONTSERRAT_40=y` from `sdkconfig.defaults`, and add `CONFIG_IDF_TARGET="esp32c6"`. Found during apply: sdkconfig.defaults didn't name the target, so a deleted `sdkconfig` regenerated for the default esp32. Don't delete `sdkconfig`; set the font line in it to not-set by hand. Verify: the build log has no `unknown kconfig symbol` notes, and the app binary size doesn't grow.
 
 ## 3. Logs (AUDIT item 24)
 

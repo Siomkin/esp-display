@@ -35,7 +35,7 @@ void app_main(void)
     Flash_Searching();
     RGB_Init();
     ESP_ERROR_CHECK(RGB_Start());           // LED stays off until long press enables it
-    SD_Init();                              // SD must be initialized behind the LCD
+    SD_Init();                              // Creates the SPI bus: must run before LCD_Init()
     LCD_Init();                             // Backlight stays off until the first frame is on the panel
     LVGL_Init();                            // Initialize LVGL
 

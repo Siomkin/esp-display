@@ -2,6 +2,8 @@
 
 static const char *TAG_LCD = "WS_LCD";
 
+static void BK_Init(void);
+
 esp_lcd_panel_handle_t panel_handle = NULL;
 esp_lcd_panel_io_handle_t io_handle = NULL;
 
@@ -71,25 +73,25 @@ void LCD_Init(void)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Backlight program
 static ledc_channel_config_t ledc_channel;
-void BK_Init(void)
+static void BK_Init(void)
 {
     ESP_LOGI(TAG_LCD, "Turn off LCD backlight");
     // No gpio_config here: LEDC routes the pin itself (IDF 6 warns if the GPIO is already reserved)
     // 配置LEDC
     ledc_timer_config_t ledc_timer = {
-        .duty_resolution = LEDC_TIMER_13_BIT,
+        .duty_resolution = LEDC_ResolutionRatio,  // Same constant as LEDC_MAX_Duty
         .freq_hz = 5000,
-        .speed_mode = LEDC_LS_MODE,
-        .timer_num = LEDC_HS_TIMER,
+        .speed_mode = BK_LEDC_MODE,
+        .timer_num = BK_LEDC_TIMER,
         .clk_cfg = LEDC_AUTO_CLK
     };
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
-    ledc_channel.channel    = LEDC_HS_CH0_CHANNEL;
+    ledc_channel.channel    = BK_LEDC_CHANNEL;
     ledc_channel.duty       = 0;
     ledc_channel.gpio_num   = EXAMPLE_PIN_NUM_BK_LIGHT;
-    ledc_channel.speed_mode = LEDC_LS_MODE;
-    ledc_channel.timer_sel  = LEDC_HS_TIMER;
+    ledc_channel.speed_mode = BK_LEDC_MODE;
+    ledc_channel.timer_sel  = BK_LEDC_TIMER;
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 }
 void BK_Light(uint8_t Light)

@@ -220,6 +220,8 @@ When making changes, verify:
 ### Serial Monitor
 - Baud rate: 115200
 - Look for tags: `MAIN`, `WiFi`, `MQTT`, `WeatherUI`, `BUTTON`, `WS_LVGL`
+- Raw MQTT topic/payload lines are DEBUG: raise the `MQTT` tag to DEBUG
+  (`esp_log_level_set("MQTT", ESP_LOG_DEBUG)` plus `CONFIG_LOG_MAXIMUM_LEVEL_DEBUG`) to see them
 
 ### Common Issues
 1. **WiFi won't connect**: Check SSID/password in `config/app_config.h`
